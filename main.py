@@ -1,6 +1,7 @@
 import time
 import tkinter as tk
 from calculation import Calculation
+from PIL import Image, ImageTk
 
 calc = None
 now_dm = 0
@@ -41,7 +42,8 @@ class Example(tk.Frame):
     entrys_vals = (30000, 6000, 1.62, 2500, 10000, 5, 0.5, 300)
     btn_start = None
 
-    speed = w//1000
+    speed_x = 0.5
+    speed_y = 0.5
 
     def __init__(self, win):
         tk.Frame.__init__(self, master=win)
@@ -74,29 +76,39 @@ class Example(tk.Frame):
         self.btn_start = StartButton(frame, self.bg, name)
         frame.pack(side=tk.LEFT, anchor='nw', fill=tk.Y, ipady=60, ipadx=10)
 
-        canvas = tk.Canvas(self.master, bg='black', height=self.h, width=self.w-343, highlightthickness=0)
+        canvas = tk.Canvas(self.master, bg='white', height=self.h, width=self.w-343, highlightthickness=0)
         canvas.pack()
 
+        img_bg = ImageTk.PhotoImage(Image.open("clouds.png").resize((1300, 1000), Image.LANCZOS))
+        canvas.image = [img_bg]
         imgRocket = tk.PhotoImage(file="rocket1.png")
-        canvas.image = imgRocket
+        canvas.image.append(imgRocket)
 
-        self.rocket = canvas.create_image(int(canvas['width'])/2, self.h/2, image=imgRocket)
+        imgRocket_1 = tk.PhotoImage(file="rocket1_1.png")
+
+        canvas.image.append(imgRocket_1)
+
+        print(canvas.__dict__)
+        self.bg_canvas = canvas.create_image(0, 0, anchor='nw', image=img_bg)
+        self.rocket = canvas.create_image(int(canvas['width']) / 2, self.h / 2, image=imgRocket)
+        self.rocket_1 = canvas.create_image(int(canvas['width']) / 2, self.h / 2, image=imgRocket_1)
 
     def update(self):
-        self.master.pack_slaves()[1]['height'] = self.h
-        self.master.pack_slaves()[1]['width'] = self.w
         self.animation()
         self.master.update()
 
     def animation(self):
         coords = self.master.pack_slaves()[1].coords(self.rocket)
         # добавляет движение ракеты вправо-влево, всегда
-        if coords[0] > self.master.pack_slaves()[1].winfo_width()/2-25: self.speed = -self.speed
-        elif coords[0] < self.master.pack_slaves()[1].winfo_width()/2-30: self.speed = -self.speed
-        self.master.pack_slaves()[1].move(self.rocket, self.speed, 0)
+        if coords[0] > self.master.pack_slaves()[1].winfo_width()/2+10: self.speed_x = -self.speed_x
+        elif coords[0] < self.master.pack_slaves()[1].winfo_width()/2-10: self.speed_x = -self.speed_x
+        # добавляет движение ракеты вверх-вниз, всегда
+        if coords[1] > self.master.pack_slaves()[1].winfo_height() / 2 + 3: self.speed_y = -self.speed_y
+        elif coords[1] < self.master.pack_slaves()[1].winfo_height() / 2 - 3: self.speed_y = -self.speed_y
+        #добавляет движение фона
+        # print(self.master.pack_slaves()[1].image)
 
-
-        # self.master.pack_slaves()[1].move(self.rocket, 1, 0)
+        self.master.pack_slaves()[1].move(self.rocket, self.speed_x, self.speed_y)
 
 
 
@@ -108,15 +120,22 @@ def change_dm(event):
     global now_dm
     if calc:
         if event.keysym == "Up":
-            if now_dm < calc.allow_max_dm/100*99:
+            if now_dm < calc.allow_max_dm:
                 now_dm += calc.allow_max_dm/100*1
+                if now_dm > calc.allow_max_dm:
+                    now_dm = calc.allow_max_dm
             return now_dm
         elif event.keysym == "Down":
-            if now_dm > calc.allow_max_dm/100:
-                now_dm -= calc.allow_max_dm/100*1
+            if now_dm >= 0:
+                now_dm -= calc.allow_max_dm/100
+                if now_dm < 0:
+                    now_dm = 0
             return now_dm
 
 running = True
+
+now_dm = 10
+
 def main():
 
     win = tk.Tk()
@@ -129,11 +148,13 @@ def main():
 
     while running:
         app.update()
+        # if now_dm != 0:
+            # print(app.master.pack_slaves()[1].__dict__)
+
         if calc:
             if calc.h[-1] > 0 and calc.m_fuel > 0:
                 calc.calculate(now_dm)
-                print(now_dm)
-        time.sleep(0.01)
+        # time.sleep(0.01)
 
     win.destroy()
 
